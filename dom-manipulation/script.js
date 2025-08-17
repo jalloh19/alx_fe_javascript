@@ -1,5 +1,5 @@
-// Quotes array with objects containing text and category
-let quotes = [
+
+let quotes = JSON.parse(localStorage.getItem("quotes")) || [
   { text: "The best way to predict the future is to invent it.", category: "Inspiration" },
   { text: "Life is what happens when you're busy making other plans.", category: "Life" },
   { text: "Do or do not. There is no try.", category: "Motivation" },
@@ -7,15 +7,29 @@ let quotes = [
 
 const quoteDisplay = document.getElementById("quoteDisplay");
 const newQuoteBtn = document.getElementById("newQuote");
+const formContainer = document.getElementById("formContainer");
 
-// Function: showRandomQuote (required by checker)
-function showRandomQuote() {
-  let randomIndex = Math.floor(Math.random() * quotes.length);
-  let quote = quotes[randomIndex];
-  quoteDisplay.innerHTML = `"${quote.text}" — <strong>[${quote.category}]</strong>`;
+
+function saveQuotes() {
+  localStorage.setItem("quotes", JSON.stringify(quotes));
 }
 
-// Function: addQuote (required by checker)
+
+function showRandomQuote() {
+  if (quotes.length === 0) {
+    quoteDisplay.innerHTML = "No quotes available.";
+    return;
+  }
+  let randomIndex = Math.floor(Math.random() * quotes.length);
+  let quote = quotes[randomIndex];
+
+  quoteDisplay.innerHTML = `"${quote.text}" — <strong>[${quote.category}]</strong>`;
+
+  // Store last viewed quote in SessionStorage
+  sessionStorage.setItem("lastQuote", JSON.stringify(quote));
+}
+
+
 function addQuote() {
   const newText = document.getElementById("newQuoteText").value.trim();
   const newCategory = document.getElementById("newQuoteCategory").value.trim();
@@ -25,21 +39,17 @@ function addQuote() {
     return;
   }
 
-  // Add new quote object to array
   quotes.push({ text: newText, category: newCategory });
+  saveQuotes();
 
-  // Update DOM with innerHTML
   quoteDisplay.innerHTML = `"${newText}" — <strong>[${newCategory}]</strong>`;
 
-  // Clear inputs
   document.getElementById("newQuoteText").value = "";
   document.getElementById("newQuoteCategory").value = "";
 }
 
-// Function: createAddQuoteForm (required by checker)
-function createAddQuoteForm() {
-  const formDiv = document.createElement("div");
 
+function createAddQuoteForm() {
   const inputText = document.createElement("input");
   inputText.id = "newQuoteText";
   inputText.type = "text";
@@ -54,18 +64,59 @@ function createAddQuoteForm() {
   addButton.textContent = "Add Quote";
   addButton.addEventListener("click", addQuote);
 
-  formDiv.appendChild(inputText);
-  formDiv.appendChild(inputCategory);
-  formDiv.appendChild(addButton);
-
-  document.body.appendChild(formDiv);
+  formContainer.appendChild(inputText);
+  formContainer.appendChild(inputCategory);
+  formContainer.appendChild(addButton);
 }
 
-// Event listener on "Show New Quote" button
-newQuoteBtn.addEventListener("click", showRandomQuote);
 
-// Run on page load
-showRandomQuote();
-createAddQuoteForm(); 
+function exportToJsonFile() {
+  const blob = new Blob([JSON.stringify(quotes, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+
+function importFromJsonFile(event) {
+  const fileReader = new FileReader();
+  fileReader.onload = function(e) {
+    try {
+      const importedQuotes = JSON.parse(e.target.result);
+      if (Array.isArray(importedQuotes)) {
+        quotes.push(...importedQuotes);
+        saveQuotes();
+        alert("Quotes imported successfully!");
+      } else {
+        alert("Invalid JSON format. Expected an array of quotes.");
+      }
+    } catch {
+      alert("Error reading JSON file.");
+    }
+  };
+  fileReader.readAsText(event.target.files[0]);
+}
+
+
+newQuoteBtn.addEventListener("click", showRandomQuote);
+document.getElementById("exportBtn").addEventListener("click", exportToJsonFile);
+
+
+createAddQuoteForm();
+
+// Show last viewed quote from sessionStorage if available
+const lastQuote = sessionStorage.getItem("lastQuote");
+if (lastQuote) {
+  const parsed = JSON.parse(lastQuote);
+  quoteDisplay.innerHTML = `"${parsed.text}" — <strong>[${parsed.category}]</strong>`;
+} else {
+  showRandomQuote();
+}
+
 
 
